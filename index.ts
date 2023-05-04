@@ -17,11 +17,14 @@ var write = nconf.get("write");
 console.log(dir);
 
 const dateFileNameExtractors = {
-  WP: /WP_(?<year>\d\d\d\d)(?<month>\d\d)(?<day>\d\d)_(?<hour>\d\d)_(?<minute>\d\d)/g,
+  WP: /(wp|img)(_|-)(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})(_|-)((?<hour>\d{2})_(?<minute>\d{2}))?/gi,
 };
 
 const getExtractor = (file: string) => {
-  if (file.startsWith("WP_")) {
+  if (
+    file.toLowerCase().startsWith("wp_") ||
+    file.toLowerCase().startsWith("img-")
+  ) {
     return dateFileNameExtractors.WP;
   }
   return undefined;
@@ -36,16 +39,16 @@ const extractDate = (file: string) => {
 
   const matches = file.matchAll(extractor);
 
-  const groups = matches.next().value.groups;
+  const groups = matches.next().value?.groups;
 
   if (!groups) {
     console.log("no groups".red);
     return undefined;
   }
 
-  const { year, month, day, hour, minute } = groups;
+  const { year, month, day, hour = 14, minute = 0 } = groups;
 
-  if (!year || !month || !day || !hour || !minute) {
+  if (year === undefined || month === undefined || day === undefined) {
     console.log("not all date components found");
     return undefined;
   }
@@ -87,5 +90,3 @@ for (const file of files) {
     }
   }
 }
-
-//console.log(files);
