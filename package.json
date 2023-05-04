@@ -1,0 +1,16 @@
+{
+  "name": "fix-images",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@types/node": "^18.16.3",
+    "colors": "^1.4.0",
+    "nconf": "^0.12.0",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "@types/nconf": "^0.10.3"
+  }
+}
