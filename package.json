@@ -8,9 +8,10 @@
     "prettier": "^2.8.8",
     "ts-node": "^10.9.1",
     "tslib": "^2.5.0",
-    "typescript": "^5.0.4"
-  },
-  "dependencies": {
+    "typescript": "^5.0.4",
     "@types/nconf": "^0.10.3"
+  },
+  "scripts": {
+    "start": "ts-node index"
   }
 }
