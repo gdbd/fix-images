@@ -1,6 +1,7 @@
 import nconf from "nconf";
 import fs from "fs";
 import path from "path";
+import recursive from "recursive-readdir";
 import "colors";
 
 nconf.argv().env();
@@ -14,7 +15,14 @@ var year = nconf.get("year");
 //write changes to file
 var write = nconf.get("write");
 
-console.log(dir);
+var isRecursive = nconf.get("recursive");
+
+console.log("--".repeat(30));
+console.log("directory:".magenta, dir);
+console.log("find newer than:".magenta, year);
+console.log("write changes:".magenta, write ?? false);
+console.log("recursive:".magenta, isRecursive ?? false);
+console.log("--".repeat(30));
 
 const dateFileNameExtractors = {
   WP: /(wp|img)(_|-)(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})(_|-)((?<hour>\d{2})_(?<minute>\d{2}))?/gi,
@@ -62,31 +70,42 @@ const extractDate = (file: string) => {
   );
 };
 
-const files = fs.readdirSync(dir);
+const processFiles = (files: readonly string[]) => {
+  for (const file of files) {
+    const fullPath = path.isAbsolute(file) ? file : path.join(dir, file);
+    const fileName = path.basename(file);
 
-for (const file of files) {
-  const fullPath = path.join(dir, file);
-  const stat = fs.statSync(fullPath);
+    const stat = fs.statSync(fullPath);
 
-  if (stat.mtime.getFullYear() === year) {
-    console.log();
-    console.log(file.yellow);
-    const date = extractDate(file);
+    if (stat.mtime.getFullYear() === year) {
+      console.log();
+      console.log(file.yellow);
+      const date = extractDate(fileName);
 
-    if (!date) {
-      console.log("cannot extract date".red);
-      continue;
-    }
+      if (!date) {
+        console.log("cannot extract date".red);
+        continue;
+      }
 
-    console.log(`extracted ${date.toLocaleString()}`.green);
+      console.log(`extracted ${date.toLocaleString()}`.green);
 
-    if (write) {
-      try {
-        fs.utimesSync(fullPath, date, date);
-        console.log("updated".green);
-      } catch (e) {
-        console.log("error".red, e);
+      if (write) {
+        try {
+          fs.utimesSync(fullPath, date, date);
+          console.log("updated".green);
+        } catch (e) {
+          console.log("error".red, e);
+        }
       }
     }
   }
+};
+
+if (isRecursive) {
+  recursive(dir, [], (_, files) => {
+    processFiles(files);
+  });
+} else {
+  const files = fs.readdirSync(dir);
+  processFiles(files);
 }

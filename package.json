@@ -9,7 +9,9 @@
     "ts-node": "^10.9.1",
     "tslib": "^2.5.0",
     "typescript": "^5.0.4",
-    "@types/nconf": "^0.10.3"
+    "@types/nconf": "^0.10.3",
+    "recursive-readdir": "^2.2.3",
+    "@types/recursive-readdir": "^2.2.1"
   },
   "scripts": {
     "start": "ts-node index"
