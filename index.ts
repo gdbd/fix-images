@@ -18,6 +18,9 @@ var write = nconf.get('write');
 
 var isRecursive = nconf.get('recursive');
 
+const defaultHour = 14;
+const defaultMinute = 0;
+
 console.log('--'.repeat(30));
 console.log('directory:'.magenta, dir);
 console.log('find newer than:'.magenta, year);
@@ -25,54 +28,91 @@ console.log('write changes:'.magenta, write ?? false);
 console.log('recursive:'.magenta, isRecursive ?? false);
 console.log('--'.repeat(30));
 
-const validPrefixes = ['wp' as const, 'img' as const, 'vid' as const, 'aud' as const];
+const wellKnownPrefixes = ['wp' as const, 'img' as const, 'vid' as const, 'aud' as const];
 
 const commonRegex = new RegExp(
-  `(${validPrefixes.join('|')})(_|-)(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})(_|-)((?<hour>\\d{2})_(?<minute>\\d{2}))?`,
+  `(${wellKnownPrefixes.join('|')})(_|-)(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})(_|-)((?<hour>\\d{2})_(?<minute>\\d{2}))?`,
   'gi'
 );
 
-type TValidPrefix = ArrayElement<typeof validPrefixes>;
+const arbitraryRegex = new RegExp(`(?<year>\\d{4})(_|-)?(?<month>\\d{2})(_|-)?(?<day>\\d{2})(_|-)?((?<hour>\\d{2})(_|-)?(?<minute>\\d{2}))?`, 'gi');
 
-const dateFileNameExtractors: Record<TValidPrefix, RegExp> = {
+type TValidPrefix = ArrayElement<typeof wellKnownPrefixes>;
+
+const dateFileNameExtractors: Record<TValidPrefix | 'arbitrary', RegExp> = {
   wp: commonRegex,
   img: commonRegex,
   vid: commonRegex,
   aud: commonRegex,
+  arbitrary: arbitraryRegex,
 };
 
-const getExtractor = (file: string) => {
+const getExtractor = (file: string): RegExp => {
   const prefix = file.toLowerCase().slice(0, 3) as TValidPrefix;
-  if (validPrefixes.includes(prefix)) {
+  if (wellKnownPrefixes.includes(prefix)) {
     return dateFileNameExtractors[prefix];
   }
-  return undefined;
+
+  return dateFileNameExtractors.arbitrary;
 };
 
 const extractDate = (file: string) => {
   const extractor = getExtractor(file);
-
-  if (!extractor) {
-    return undefined;
-  }
 
   const matches = file.matchAll(extractor);
 
   const groups = matches.next().value?.groups;
 
   if (!groups) {
-    console.log('no groups'.red);
+    console.log('no date matches'.red);
     return undefined;
   }
 
-  const { year, month, day, hour = 14, minute = 0 } = groups;
+  const { year, month, day } = groups;
+
+  let { hour, minute } = groups;
 
   if (year === undefined || month === undefined || day === undefined) {
     console.log('not all date components found');
     return undefined;
   }
 
-  return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  if (!hour || hour > 23) {
+    hour = defaultHour;
+    console.log(`hour corrected to default (${defaultHour})`);
+  }
+
+  if (!minute || minute > 60) {
+    minute = defaultMinute;
+    console.log(`minute corrected to default (${defaultMinute})`);
+  }
+
+  const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+
+  console.log(`extracted ${date.toLocaleString()}`.green);
+
+  let correct = true;
+
+  if (year < 2010 || year > new Date().getFullYear()) {
+    console.log('year incorrect', year);
+    correct = false;
+  }
+
+  if (month > 12) {
+    console.log('month incorrect', month);
+    correct = false;
+  }
+
+  if (day > 31) {
+    console.log('day incorrect', day);
+    correct = false;
+  }
+
+  if (!correct) {
+    return undefined;
+  }
+
+  return date;
 };
 
 const processFiles = (files: readonly string[]) => {
@@ -91,8 +131,6 @@ const processFiles = (files: readonly string[]) => {
         console.log('cannot extract date'.red);
         continue;
       }
-
-      console.log(`extracted ${date.toLocaleString()}`.green);
 
       if (write) {
         try {
